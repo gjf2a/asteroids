@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'asteroids.dart';
@@ -52,44 +54,37 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  Game _game = Game();
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  _MyHomePageState() {
+    Timer.periodic(Duration(milliseconds: 50), _timeHandler);
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: LayoutBuilder(
           builder: (_, constraints) => Container(
               width: constraints.widthConstraints().maxWidth,
               height: constraints.heightConstraints().maxHeight,
-              child: CustomPaint(painter: AsteroidsGame()))
+              child: CustomPaint(painter: AsteroidsGame(_game, _handler)))
         )
       ),
     );
+  }
+
+  void _handler() {
+    setState(() {});
+  }
+
+  void _timeHandler(Timer t) {
+    setState(() {
+      _game.tick();
+    });
   }
 }
 
@@ -97,16 +92,27 @@ class _MyHomePageState extends State<MyHomePage> {
 // https://codewithandrea.com/videos/2020-01-27-flutter-custom-painting-do-not-fear-canvas/
 class AsteroidsGame extends CustomPainter {
   Game _game;
+  void Function() _handler;
+
+  AsteroidsGame(Game game, void Function() handler) {
+    _game = game;
+    _handler = handler;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (_game == null) {
-      _game = Game(size.width, size.height);
-    }
-    print("ready to paint!");
+    _game.setBoundaries(size.width, size.height);
     _game.paint(canvas);
   }
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
+
+  @override
+  bool hitTest(Offset position) {
+    _game.rotateShip(Point(position.dx, position.dy));
+    _game.fire();
+    _handler();
+    return true;
+  }
 }

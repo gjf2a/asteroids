@@ -1,20 +1,30 @@
 import 'dart:math';
-
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 class Game {
-  double _width, _height;
+  double _width = 100, _height = 100;
   List<FlyingCircle> _asteroids, _missiles;
   Ship _ship;
   bool _live;
 
-  Game(this._width, this._height) {
+  Game() {
     _live = true;
     _asteroids = List();
     _missiles = List();
-    _ship = Ship(Point(_width/2, _height/2), Polar(0, 0), _height/10, _width/10);
+    _setupShipAndAsteroids();
+  }
+
+  void setBoundaries(double width, double height) {
+    if (width != _width || height != _height) {
+      _width = width;
+      _height = height;
+      _setupShipAndAsteroids();
+    }
+  }
+
+  void _setupShipAndAsteroids() {
+    _ship = Ship(Point(_width/2, _height/2), Polar(0, 0), _height/20, _width/20);
 
     for (int i = 0; i < 12; i++) {
       _asteroids.add(FlyingCircle(Point(0, 0), Polar(1, i * pi/12), (_height+_width)/20));
@@ -54,6 +64,8 @@ class Game {
 
     _live = !_ship.collidesWithAny(_asteroids);
   }
+
+  Ship get ship => _ship;
 }
 
 class Point {
@@ -85,6 +97,11 @@ class Point {
   Point wrapped(double width, double height) {
     return Point(_wrap(_x, width), _wrap(_y, height));
   }
+
+  String toString() => "Point($_x,$_y)";
+
+  @override
+  int get hashCode => toString().hashCode;
 }
 
 double _wrap(double v, double bound) {
@@ -116,6 +133,11 @@ class Polar {
   Point toPoint() {
     return Point(_r * cos(_theta), _r * sin(_theta));
   }
+
+  String toString() => "Polar($_r,$_theta)";
+
+  @override
+  int get hashCode => toString().hashCode;
 }
 
 abstract class FlyingObject {
@@ -133,8 +155,11 @@ abstract class FlyingObject {
   void paint(Canvas canvas);
 
   bool collidesWithAny(List<FlyingCircle> others) {
-    return others.any((element) => element.collidesWith(this));
+    return others.any((FlyingCircle element) => this.collidesWith(element));
   }
+
+  Point get location => _location;
+  Polar get velocity => _velocity;
 }
 
 class FlyingCircle extends FlyingObject {
