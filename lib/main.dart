@@ -67,13 +67,14 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: LayoutBuilder(
-          builder: (_, constraints) => Container(
+        child:
+          LayoutBuilder(
+            builder: (_, constraints) => Container(
               width: constraints.widthConstraints().maxWidth,
               height: constraints.heightConstraints().maxHeight,
               child: CustomPaint(painter: AsteroidsGame(_game, _handler)))
-        )
-      ),
+          ),
+        ),
     );
   }
 

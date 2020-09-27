@@ -12,29 +12,36 @@ class Game {
     _live = true;
     _asteroids = List();
     _missiles = List();
-    _setupShipAndAsteroids();
+    _setupShip();
+    _setupAsteroids();
   }
 
   void setBoundaries(double width, double height) {
     if (width != _width || height != _height) {
       _width = width;
       _height = height;
-      _setupShipAndAsteroids();
+      _setupShip();
+      _setupAsteroids();
     }
   }
 
-  void _setupShipAndAsteroids() {
+  void _setupShip() {
     _ship = Ship(Point(_width/2, _height/2), Polar(0, 0), _height/20, _width/20);
+  }
 
+  void _setupAsteroids() {
+    _asteroids = List();
     for (int i = 0; i < 12; i++) {
-      _asteroids.add(FlyingCircle(Point(0, 0), Polar(1, i * pi/12), (_height+_width)/20));
+      _asteroids.add(FlyingCircle(Point(0, 0), Polar(1, i * pi/6), (_height+_width)/20));
     }
   }
 
   void paint(Canvas canvas) {
     _asteroids.forEach((element) {element.paint(canvas);});
     _missiles.forEach((element) {element.paint(canvas);});
-    _ship.paint(canvas);
+    if (_live) {
+      _ship.paint(canvas);
+    }
   }
 
   void fire() {
@@ -46,6 +53,15 @@ class Game {
   }
 
   void tick() {
+    if (_asteroids.length == 0) {
+      _setupAsteroids();
+    }
+
+    _moveEverything();
+    _resolveCollisions();
+  }
+
+  void _moveEverything() {
     for (FlyingCircle asteroid in _asteroids) {
       asteroid.wrapMove(_width, _height);
     }
@@ -53,16 +69,29 @@ class Game {
     for (FlyingCircle missile in _missiles) {
       missile.move();
     }
+  }
 
-    List<FlyingCircle> survivors = List();
+  void _resolveCollisions() {
+    List<FlyingCircle> survivingAsteroids = List();
     for (FlyingCircle asteroid in _asteroids) {
-      if (!asteroid.collidesWithAny(_missiles) && !_ship.collidesWith(asteroid)) {
-        survivors.add(asteroid);
+      if (_live && _ship.collidesWith(asteroid)) {
+        _live = false;
+      } else {
+        if (!asteroid.collidesWithAny(_missiles)) {
+          survivingAsteroids.add(asteroid);
+        }
       }
     }
-    _asteroids = survivors;
 
-    _live = !_ship.collidesWithAny(_asteroids);
+    List<FlyingCircle> survivingMissiles = List();
+    for (FlyingCircle missile in _missiles) {
+      if (!missile.collidesWithAny(_asteroids) && missile.location.within(_width, _height)) {
+        survivingMissiles.add(missile);
+      }
+    }
+
+    _asteroids = survivingAsteroids;
+    _missiles = survivingMissiles;
   }
 
   Ship get ship => _ship;
@@ -94,6 +123,10 @@ class Point {
     return other is Point && _x == other._x && _y == other._y;
   }
 
+  bool within(double width, double height) {
+    return _within(_x, width) && _within(_y, height);
+  }
+
   Point wrapped(double width, double height) {
     return Point(_wrap(_x, width), _wrap(_y, height));
   }
@@ -112,6 +145,10 @@ double _wrap(double v, double bound) {
   } else {
     return v;
   }
+}
+
+bool _within(double v, double bound) {
+  return v >= 0 && v <= bound;
 }
 
 class Polar {
