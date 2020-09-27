@@ -2,11 +2,15 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+const double speedIncrement = 0.5;
+
 class Game {
   double _width = 100, _height = 100;
-  List<FlyingCircle> _asteroids, _missiles;
+  List<FlyingCircle> _missiles;
+  List<Asteroid> _asteroids;
   Ship _ship;
   bool _live;
+  double asteroidSpeed = 0;
 
   Game() {
     restart();
@@ -34,9 +38,10 @@ class Game {
   }
 
   void _setupAsteroids() {
+    asteroidSpeed += speedIncrement;
     _asteroids = List();
     for (int i = 0; i < 12; i++) {
-      _asteroids.add(FlyingCircle(Point(0, 0), Polar(1, i * pi/6), (_height+_width)/20));
+      _asteroids.add(Asteroid(Point(0, 0), Polar(asteroidSpeed, i * pi/6), (_height+_width)/20));
     }
   }
 
@@ -86,13 +91,16 @@ class Game {
     _missiles = survivingMissiles;
   }
 
-  List<FlyingCircle> _findSurvivingAsteroids() {
-    List<FlyingCircle> survivingAsteroids = List();
-    for (FlyingCircle asteroid in _asteroids) {
+  List<Asteroid> _findSurvivingAsteroids() {
+    List<Asteroid> survivingAsteroids = List();
+    for (Asteroid asteroid in _asteroids) {
       if (_live && _ship.collidesWith(asteroid)) {
         _live = false;
+        asteroidSpeed = speedIncrement;
       } else {
-        if (!asteroid.collidesWithAny(_missiles)) {
+        if (asteroid.collidesWithAny(_missiles)) {
+          asteroid.addSplitsTo(survivingAsteroids);
+        } else {
           survivingAsteroids.add(asteroid);
         }
       }
@@ -286,4 +294,25 @@ class Ship extends FlyingObject {
       ..close();
     canvas.drawPath(path, p);
   }
+}
+
+class Asteroid extends FlyingCircle {
+  int _livesLeft = 2;
+
+  Asteroid(Point location, Polar velocity, double radius) : super(location, velocity, radius);
+
+  void addSplitsTo(List<Asteroid> asteroids) {
+    if (_livesLeft > 0) {
+      asteroids.add(_getSplit(pi / 2));
+      asteroids.add(_getSplit(-pi / 2));
+    }
+  }
+
+  Asteroid _getSplit(double headingOffset) {
+    Asteroid split = Asteroid(_location, _velocity + Polar(_velocity._r, headingOffset), _radius / 2);
+    split._livesLeft = _livesLeft - 1;
+    return split;
+  }
+
+  int get livesLeft => _livesLeft;
 }
