@@ -9,6 +9,10 @@ class Game {
   bool _live;
 
   Game() {
+    restart();
+  }
+
+  void restart() {
     _live = true;
     _asteroids = List();
     _missiles = List();
@@ -35,6 +39,10 @@ class Game {
       _asteroids.add(FlyingCircle(Point(0, 0), Polar(1, i * pi/6), (_height+_width)/20));
     }
   }
+
+  Ship get ship => _ship;
+
+  bool get live => _live;
 
   void paint(Canvas canvas) {
     _asteroids.forEach((element) {element.paint(canvas);});
@@ -72,6 +80,13 @@ class Game {
   }
 
   void _resolveCollisions() {
+    List<FlyingCircle> survivingAsteroids = _findSurvivingAsteroids();
+    List<FlyingCircle> survivingMissiles = _findSurvivingMissiles();
+    _asteroids = survivingAsteroids;
+    _missiles = survivingMissiles;
+  }
+
+  List<FlyingCircle> _findSurvivingAsteroids() {
     List<FlyingCircle> survivingAsteroids = List();
     for (FlyingCircle asteroid in _asteroids) {
       if (_live && _ship.collidesWith(asteroid)) {
@@ -82,19 +97,18 @@ class Game {
         }
       }
     }
+    return survivingAsteroids;
+  }
 
+  List<FlyingCircle> _findSurvivingMissiles() {
     List<FlyingCircle> survivingMissiles = List();
     for (FlyingCircle missile in _missiles) {
       if (!missile.collidesWithAny(_asteroids) && missile.location.within(_width, _height)) {
         survivingMissiles.add(missile);
       }
     }
-
-    _asteroids = survivingAsteroids;
-    _missiles = survivingMissiles;
+    return survivingMissiles;
   }
-
-  Ship get ship => _ship;
 }
 
 class Point {
