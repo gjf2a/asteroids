@@ -2,6 +2,8 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import 'math2d.dart';
+
 const double speedIncrement = 0.5;
 
 class Game {
@@ -119,103 +121,21 @@ class Game {
   }
 }
 
-class Point {
-  double _x, _y;
-
-  Point(this._x, this._y);
-
-  double distance(Point other) {
-    return sqrt(pow(_x - other._x, 2) + pow(_y - other._y, 2));
-  }
-
-  Point operator+(Point other) {
-    return Point(_x + other._x, _y + other._y);
-  }
-
-  Point operator-(Point other) {
-    return Point(_x - other._x, _y - other._y);
-  }
-
-  double directionTo(Point other) {
-    Point difference = other - this;
-    return atan2(difference._y, difference._x);
-  }
-
-  bool operator==(Object other) {
-    return other is Point && _x == other._x && _y == other._y;
-  }
-
-  bool within(double width, double height) {
-    return _within(_x, width) && _within(_y, height);
-  }
-
-  Point wrapped(double width, double height) {
-    return Point(_wrap(_x, width), _wrap(_y, height));
-  }
-
-  String toString() => "Point($_x,$_y)";
-
-  @override
-  int get hashCode => toString().hashCode;
-}
-
-double _wrap(double v, double bound) {
-  if (v < 0) {
-    return v + bound;
-  } else if (v > bound) {
-    return v - bound;
-  } else {
-    return v;
-  }
-}
-
-bool _within(double v, double bound) {
-  return v >= 0 && v <= bound;
-}
-
-class Polar {
-  double _r, _theta;
-
-  Polar(this._r, this._theta) {
-    while (_theta < 0) {_theta += 2*pi;}
-    while (_theta >= 2 * pi) {_theta -= 2*pi;}
-  }
-
-  bool operator==(Object other) {
-    return other is Polar && _r == other._r && _theta == other._theta;
-  }
-
-  Polar operator+(Polar other) {
-    return Polar(_r + other._r, _theta + other._theta);
-  }
-
-  Point toPoint() {
-    return Point(_r * cos(_theta), _r * sin(_theta));
-  }
-
-  String toString() => "Polar($_r,$_theta)";
-
-  @override
-  int get hashCode => toString().hashCode;
-}
-
 abstract class FlyingObject {
   Point _location;
   Polar _velocity;
 
   FlyingObject(this._location, this._velocity);
 
-  double distance(FlyingObject other) {
-    return this._location.distance(other._location);
-  }
+  double distance(FlyingObject other) =>
+      this._location.distance(other._location);
 
   bool collidesWith(FlyingCircle other);
 
   void paint(Canvas canvas);
 
-  bool collidesWithAny(List<FlyingCircle> others) {
-    return others.any((FlyingCircle element) => this.collidesWith(element));
-  }
+  bool collidesWithAny(List<FlyingCircle> others) =>
+      others.any((FlyingCircle element) => this.collidesWith(element));
 
   Point get location => _location;
   Polar get velocity => _velocity;
@@ -226,13 +146,10 @@ class FlyingCircle extends FlyingObject {
 
   FlyingCircle(Point location, Polar velocity, this._radius) : super(location, velocity);
 
-  bool collidesWith(FlyingCircle other) {
-    return distance(other) <= _radius + other._radius;
-  }
+  bool collidesWith(FlyingCircle other) =>
+      distance(other) <= _radius + other._radius;
 
-  bool contains(Point p) {
-    return _location.distance(p) <= _radius;
-  }
+  bool contains(Point p) => _location.distance(p) <= _radius;
 
   void move() {
     _location += _velocity.toPoint();
@@ -248,7 +165,7 @@ class FlyingCircle extends FlyingObject {
     Paint p = Paint()
     ..style = PaintingStyle.fill
     ..color = Colors.blue;
-    canvas.drawCircle(Offset(_location._x, _location._y), _radius, p);
+    canvas.drawCircle(Offset(_location.x, _location.y), _radius, p);
   }
 }
 
@@ -261,25 +178,17 @@ class Ship extends FlyingObject {
     _velocity = Polar(0, heading);
   }
 
-  Point tip() {
-    return _location + Polar(_height, _velocity._theta).toPoint();
-  }
+  Point get tip => offset(_height, 0);
+  Point get left => offset(_width/2, -pi/2);
+  Point get right => offset(_width/2, pi/2);
 
-  Point left() {
-    return _location + Polar(_width/2, _velocity._theta - pi/2).toPoint();
-  }
+  Point offset(double distance, double headingOffset) =>
+    _location + Polar(distance, _velocity.theta + headingOffset).toPoint();
 
-  Point right() {
-    return _location + Polar(_width/2, _velocity._theta + pi/2).toPoint();
-  }
+  bool collidesWith(FlyingCircle other) =>
+      other.contains(tip) || other.contains(left) || other.contains(right);
 
-  bool collidesWith(FlyingCircle other) {
-    return other.contains(tip()) || other.contains(left()) || other.contains(right());
-  }
-
-  FlyingCircle fire() {
-    return FlyingCircle(_location, Polar(10, _velocity._theta), 2);
-  }
+  FlyingCircle fire() => FlyingCircle(_location, Polar(10, _velocity.theta), 2);
 
   @override
   void paint(Canvas canvas) {
@@ -287,10 +196,10 @@ class Ship extends FlyingObject {
       ..style = PaintingStyle.fill
       ..color = Colors.deepPurple;
     Path path = Path()
-      ..moveTo(tip()._x, tip()._y)
-      ..lineTo(left()._x, left()._y)
-      ..lineTo(right()._x, right()._y)
-      ..lineTo(tip()._x, tip()._y)
+      ..moveTo(tip.x, tip.y)
+      ..lineTo(left.x, left.y)
+      ..lineTo(right.x, right.y)
+      ..lineTo(tip.x, tip.y)
       ..close();
     canvas.drawPath(path, p);
   }
@@ -309,7 +218,7 @@ class Asteroid extends FlyingCircle {
   }
 
   Asteroid _getSplit(double headingOffset) {
-    Asteroid split = Asteroid(_location, _velocity + Polar(_velocity._r, headingOffset), _radius / 2);
+    Asteroid split = Asteroid(_location, _velocity + Polar(_velocity.r, headingOffset), _radius / 2);
     split._livesLeft = _livesLeft - 1;
     return split;
   }
